@@ -1,0 +1,137 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Utilisateur {
+  id               Int        @id @default(autoincrement())
+  nom              String
+  email            String     @unique
+  mot_de_passe     String
+  telephone        String?
+  type             String
+  adresse          String?
+  date_inscription DateTime   @default(now())
+  
+  parcelles        Parcelle[]
+    // Ajoutez cette relation
+  locations      Location[]  // Locations où l'utilisateur est locataire
+
+  @@map("utilisateurs")
+}
+
+model Parcelle {
+  id                Int       @id @default(autoincrement())
+  titre             String
+  quartier          String
+  avenue            String?
+  numero            String?
+  ville             String
+  superficie        Float
+  description       String?
+  prix_vente        Float?
+  type_terrain      String
+  statut            String    @default("disponible")
+  images            String?
+  date_creation     DateTime  @default(now())
+  
+  utilisateur_id    Int?      // ← Rendre optionnel temporairement
+  
+  utilisateur       Utilisateur? @relation(fields: [utilisateur_id], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  maisons           Maison[]
+
+  @@map("parcelles")
+  @@index([quartier])
+  @@index([avenue])
+  @@index([ville])
+  @@index([type_terrain])
+  @@index([statut])
+  @@index([utilisateur_id])
+}
+
+model Maison {
+  id                  Int       @id @default(autoincrement())
+  titre               String
+  description         String?
+  
+  // Informations essentielles
+  nombre_chambres     Int
+  nombre_salles_bain  Int
+  surface_totale      Float     // en m²
+  etat                String    // 'neuf', 'bon_etat', 'renovation', 'ancien'
+  type_maison         String    // 'moderne', 'traditionnelle', 'contemporaine', 'villa'
+  standing            String    // 'economique', 'standard', 'luxe', 'premium'
+  
+  // Équipements principaux
+  jardin              Boolean   @default(false)
+  garage              Boolean   @default(false)
+  piscine             Boolean   @default(false)
+  
+  // Prix et offre
+  prix_vente          Float?
+  prix_location       Float?
+  type_offre          String    // 'vente', 'location'
+  statut              String    @default("disponible") // 'disponible', 'vendu', 'loue'
+  
+  // Images
+  images              String?
+  date_creation       DateTime  @default(now())
+  
+  // Relation avec la parcelle
+  parcelle_id         Int
+  parcelle            Parcelle  @relation(fields: [parcelle_id], references: [id])
+ // Ajoutez cette relation
+  locations      Location[]
+  
+  // Optionnel: Pour suivre si la maison est actuellement louée
+  est_louee      Boolean    @default(false)
+
+  @@map("maisons")
+  @@index([parcelle_id])
+  @@index([type_maison])
+  @@index([standing])
+  @@index([statut])
+}
+
+model Location {
+  id              Int       @id @default(autoincrement())
+  
+  // Clés étrangères ESSENTIELLES
+  maison_id       Int
+  utilisateur_id  Int       // Locataire
+  
+  // Relations
+  maison          Maison    @relation(fields: [maison_id], references: [id])
+  utilisateur     Utilisateur @relation(fields: [utilisateur_id], references: [id])
+  
+  // Informations ESSENTIELLES de location
+  date_debut      DateTime
+  date_fin        DateTime
+  loyer_mensuel   Float
+  caution         Float?    // Caution/dépôt de garantie
+  
+  // Paiements ESSENTIELS
+  total_paye      Float     @default(0)
+  solde_restant   Float     @default(0)
+  
+  // Statut ESSENTIEL
+  statut          String    @default("en_attente") // 'en_attente', 'en_cours', 'termine', 'resilie'
+  
+  // Document ESSENTIEL
+  contrat_url     String?   // URL du contrat signé
+  
+  // Métadonnées ESSENTIELLES
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+  
+  // Index pour performance
+  @@index([utilisateur_id])
+  @@index([maison_id])
+  @@index([statut])
+  @@index([date_debut])
+  @@index([date_fin])
+}
